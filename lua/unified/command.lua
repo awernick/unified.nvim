@@ -19,6 +19,25 @@ M.setup = function()
       return {}
     end,
   })
+
+  -- Closing the tab that hosts the diff view ends the session. The inline diff
+  -- decorations live on the buffer, and the tab-open layout branches that same
+  -- buffer (`tab split`), so without this hook the decorations would keep
+  -- showing in the original tab until an explicit :Unified reset. Both the
+  -- content window and the file tree live in the view's tab: when a tab close
+  -- leaves them both invalid, the user just closed the view and we clean up.
+  vim.api.nvim_create_autocmd("TabClosed", {
+    callback = function()
+      vim.schedule(function()
+        local state = require("unified.state")
+        local main_dead = not (state.main_win and vim.api.nvim_win_is_valid(state.main_win))
+        local tree_dead = not (state.file_tree_win and vim.api.nvim_win_is_valid(state.file_tree_win))
+        if state.is_active() and main_dead and tree_dead then
+          M.reset()
+        end
+      end)
+    end,
+  })
 end
 
 ---@param args string Command-line arguments (e.g. "HEAD~1", "-s HEAD", "-t", "reset").

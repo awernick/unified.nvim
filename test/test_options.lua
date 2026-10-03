@@ -414,7 +414,7 @@ function M.test_default_stays_in_current_tab()
   return true
 end
 
--- New-diff defaults contract: with no user config, :Unified opts into the
+-- Defaults contract: with no user config, :Unified opts into the
 -- new-tab layout and the snacks file tree backend. This is a fork-local choice
 -- (upstream still defaults to false/"default"); tests that need the upstream
 -- behavior pin the option explicitly.
@@ -423,6 +423,45 @@ function M.test_defaults_tab_and_snacks_backend()
   local values = require("unified.config").values
   assert(values.tab == true, "tab should default to true")
   assert(values.file_tree.backend == "snacks", "file_tree.backend should default to snacks")
+  return true
+end
+
+-- Closing the tab that hosts the diff view must auto-reset the session: the
+-- inline diff decorations live on the (shared) buffer, so otherwise they keep
+-- showing in the original tab until an explicit :Unified reset.
+function M.test_closing_view_tab_resets_the_session()
+  local repo = utils.create_git_repo()
+  if not repo then
+    return true
+  end
+
+  vim.cmd("tabonly")
+  open_modified_file(repo)
+  local buffer = vim.api.nvim_get_current_buf()
+
+  require("unified.command").run("HEAD")
+
+  assert(
+    wait_until(function()
+      return buffer_has_diff(buffer)
+    end),
+    "the diff should be shown"
+  )
+
+  -- run() focuses the view's tab; close it and give the scheduled TabClosed
+  -- cleanup a tick to run.
+  local state = require("unified.state")
+  assert(state.main_win and vim.api.nvim_win_is_valid(state.main_win), "test setup: the view should be open")
+  vim.cmd("tabclose")
+  vim.wait(100)
+
+  assert(not state.is_active(), "closing the view tab should deactivate the diff session")
+  assert(
+    #vim.api.nvim_buf_get_extmarks(buffer, require("unified.config").ns_id, 0, -1, {}) == 0,
+    "closing the view tab should clear the inline diff decorations"
+  )
+
+  utils.cleanup_git_repo(repo)
   return true
 end
 
