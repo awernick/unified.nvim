@@ -25,8 +25,13 @@ M.defaults = {
   -- When true, :Unified opens its diff view (the content window and the file
   -- tree) in a new tab, leaving your current window layout untouched. `:Unified
   -- -t` forces this for a single invocation regardless of this setting.
-  tab = false,
+  tab = true,
   file_tree = {
+    -- File tree backend: "snacks" drives the tree with snacks.nvim's git_diff
+    -- picker (preview pane, git status formatting, <Tab> staging) and falls
+    -- back to the built-in tree when snacks.nvim is not installed. "default"
+    -- always uses the built-in tree.
+    backend = "snacks",
     enabled = true, -- When false, :Unified never opens the file tree; the diff is shown for the current buffer.
     width = 30, -- Width of the file tree window (columns, or 0-1 for relative)
     filename_first = true, -- Show filename before directory path (Snacks backend only)

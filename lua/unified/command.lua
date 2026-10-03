@@ -148,8 +148,10 @@ M.run = function(args, opts)
         return
       end
 
-      -- Keep the user-provided ref so it can be re-resolved later
-      state.set_backend("default")
+      -- Keep the user-provided ref so it can be re-resolved later. The file tree
+      -- backend is resolved from the configured default each time (not sticky),
+      -- so `:Unified` always opens with the tree the configuration asked for.
+      state.set_backend(config.values.file_tree.backend)
       state.set_active(true)
 
       if is_file_buf then
@@ -232,7 +234,7 @@ function M.reset()
 
   state.main_win = nil
   state.set_active(false)
-  state.set_backend("default")
+  state.set_backend(require("unified.config").values.file_tree.backend)
 end
 
 return M

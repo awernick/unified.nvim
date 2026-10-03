@@ -24,10 +24,19 @@ function M.setup()
     callback = function()
       local backend = global_state.get_backend()
       local commit_hash = global_state.get_commit_base()
+      -- The enabled=false contract is backend-independent: :Unified must never
+      -- open a tree (snacks picker or built-in) when it is disabled.
+      if not require("unified.config").values.file_tree.enabled then
+        return
+      end
 
       if backend == "snacks" then
-        require("unified.file_tree.snacks").show(commit_hash)
-      elseif require("unified.config").values.file_tree.enabled then
+        -- The snacks backend needs snacks.nvim at runtime; show() returns false
+        -- when it (or the git repo) is missing, so fall back to the tree below.
+        if not require("unified.file_tree.snacks").show(commit_hash) then
+          M.show(commit_hash)
+        end
+      else
         M.show(commit_hash)
       end
     end,

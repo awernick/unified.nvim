@@ -77,8 +77,13 @@ require('unified').setup({
   -- When true, :Unified opens its diff view (the content window and the file
   -- tree) in a new tab, leaving your current window layout untouched. `:Unified
   -- -t` forces this for a single invocation regardless of this setting.
-  tab = false,
+  tab = true,
   file_tree = {
+    -- File tree backend: "snacks" uses snacks.nvim's git_diff picker (with a
+    -- built-in preview pane, git status formatting and <Tab> staging) when
+    -- snacks.nvim is installed, falling back to the tree below otherwise.
+    -- "default" always uses the built-in tree.
+    backend = "snacks",
     enabled = true, -- When false, :Unified does not open the tree; the diff is shown for the current buffer.
     width = 30, -- Width of the tree window (columns, or a 0-1 fraction of the editor width)
     filename_first = true, -- Show filename before directory path (Snacks backend only)
@@ -98,11 +103,11 @@ require('unified').setup({
 3.  Run `:Unified` to pick a base commit from a list and show the diff against it (the file tree opens alongside).
 4.  To close the diff view and file tree, run `:Unified reset`.
 5.  To skip the picker and diff against a specific commit, run `:Unified <commit_ref>`, for example `:Unified HEAD~1`.
-6.  To open the diff view in a new tab instead of reusing your current window layout, add `-t`, for example `:Unified -t` or `:Unified -t HEAD~1`. Set `tab = true` to make this the default.
+6.  To open the diff view in a new tab instead of reusing your current window layout, add `-t`, for example `:Unified -t` or `:Unified -t HEAD~1`. The `tab` option defaults to `true`, so `-t` mainly matters when you set it to `false`.
 
 ### Snacks Integration (Optional)
 
-unified.nvim supports integration with [snacks.nvim](https://github.com/folke/snacks.nvim)'s git_diff picker as an alternative file browser. This provides a feature-rich experience with built-in diff previews, git status formatting, and staging capabilities.
+unified.nvim lists changed files with [snacks.nvim](https://github.com/folke/snacks.nvim)'s git_diff picker by default (`file_tree.backend = "snacks"`); set `file_tree.backend = "default"` to use the built-in file tree instead, or per-invocation with `:Unified -s <commit_ref>`. The picker provides a feature-rich experience with built-in diff previews, git status formatting, and staging capabilities.
 
 **Installation:**
 
@@ -206,7 +211,7 @@ Behavior notes:
   * `:Unified`: Opens a picker (via `vim.ui.select`) to choose the base commit, then shows the diff against it using the default file tree.
   * `:Unified <commit_ref>`: Shows the diff against the specified commit reference (e.g., a commit hash, branch name, or tag) using the default file tree.
   * `:Unified -s <commit_ref>`: Shows the diff against the specified commit reference using the Snacks git_diff picker (requires snacks.nvim).
-  * `:Unified -t [<commit_ref>]`: Opens the diff view in a new tab, leaving your current window layout untouched. Works with or without a commit ref (without one, the picker opens first). Set `tab = true` to make every `:Unified` open in a new tab.
+  * `:Unified -t [<commit_ref>]`: Opens the diff view in a new tab, leaving your current window layout untouched. Works with or without a commit ref (without one, the picker opens first). The `tab` option defaults to `true`, so this flag mainly matters when you set it to `false`.
   * `:Unified reset`: Removes all unified diff highlights and signs from the current buffer and closes the file tree window if it is open.
 
 ## Development

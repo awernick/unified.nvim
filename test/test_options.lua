@@ -89,7 +89,10 @@ function M.test_reset_deactivates_when_tree_already_closed()
   require("unified.command").reset()
 
   assert(not state.is_active(), "reset must set active=false even when the tree window is already closed")
-  assert(state.get_backend() == "default", "reset must restore the default backend")
+  assert(
+    state.get_backend() == require("unified.config").values.file_tree.backend,
+    "reset must restore the configured default backend"
+  )
   return true
 end
 
@@ -121,15 +124,16 @@ function M.test_enabled_false_diffs_current_buffer_without_tree()
   return true
 end
 
--- Default (focus = false): the tree still opens, but focus stays in the current
--- buffer and that buffer's diff is shown in place.
+-- Default focus contract (focus = false): the tree still opens, but focus stays
+-- in the current buffer and that buffer's diff is shown in place. tab and the
+-- file tree backend are pinned so this test exercises only the focus behavior.
 function M.test_focus_false_keeps_focus_in_current_buffer()
   local repo = utils.create_git_repo()
   if not repo then
     return true
   end
 
-  require("unified.config").setup({})
+  require("unified.config").setup({ tab = false, file_tree = { backend = "default" } })
 
   open_modified_file(repo)
   local buffer = vim.api.nvim_get_current_buf()
@@ -191,13 +195,15 @@ end
 
 -- jump_to_first_hunk = true (default): :Unified on the current buffer lands the
 -- cursor on the first changed hunk, even though the change is below the top.
+-- tab and the backend are pinned so the cursor assertions are not affected by
+-- the view-opening behavior.
 function M.test_jump_to_first_hunk_moves_cursor_in_current_buffer()
   local repo = utils.create_git_repo()
   if not repo then
     return true
   end
 
-  require("unified.config").setup({})
+  require("unified.config").setup({ tab = false, file_tree = { backend = "default" } })
 
   open_file_with_late_hunk(repo)
   local buffer = vim.api.nvim_get_current_buf()
@@ -354,7 +360,7 @@ function M.test_tab_flag_opens_view_in_new_tab()
     return true
   end
 
-  require("unified.config").setup({}) -- tab defaults to false
+  require("unified.config").setup({ tab = false }) -- the default is true, pin it off
 
   vim.cmd("tabonly")
   open_modified_file(repo)
@@ -377,14 +383,15 @@ function M.test_tab_flag_opens_view_in_new_tab()
   return true
 end
 
--- Default (tab = false, no flag): :Unified stays in the current tab.
+-- tab = false (no flag): :Unified stays in the current tab instead of opening
+-- its own.
 function M.test_default_stays_in_current_tab()
   local repo = utils.create_git_repo()
   if not repo then
     return true
   end
 
-  require("unified.config").setup({})
+  require("unified.config").setup({ tab = false })
 
   vim.cmd("tabonly")
   open_modified_file(repo)
@@ -404,6 +411,18 @@ function M.test_default_stays_in_current_tab()
   assert(vim.api.nvim_get_current_tabpage() == original_tab, "focus should stay in the current tab")
 
   utils.cleanup_git_repo(repo)
+  return true
+end
+
+-- New-diff defaults contract: with no user config, :Unified opts into the
+-- new-tab layout and the snacks file tree backend. This is a fork-local choice
+-- (upstream still defaults to false/"default"); tests that need the upstream
+-- behavior pin the option explicitly.
+function M.test_defaults_tab_and_snacks_backend()
+  require("unified.config").setup({})
+  local values = require("unified.config").values
+  assert(values.tab == true, "tab should default to true")
+  assert(values.file_tree.backend == "snacks", "file_tree.backend should default to snacks")
   return true
 end
 
