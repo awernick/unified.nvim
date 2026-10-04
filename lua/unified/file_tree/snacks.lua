@@ -11,6 +11,37 @@ local git = require("unified.git")
 -- the patch. Registered once; cheap because a git_diff picker is rare.
 local hooks_registered = false
 
+-- The preview float anchors on the content window (snacks uses relative =
+-- "win" with win = picker.main). Closing the file-buffer window (e.g. :q)
+-- with the tree still open leaves that anchor dead, and every preview re-show
+-- then throws "Invalid window id". Re-point the anchor: reuse the tracked
+-- content window when it is valid, or create a fresh split so the tree keeps
+-- working and the next preview has somewhere to live.
+local function ensure_main_anchor(picker)
+  if picker.main and type(picker.main) == "number" and vim.api.nvim_win_is_valid(picker.main) then
+    return
+  end
+  if not global_state.is_active() then
+    return
+  end
+  local main_win = global_state.get_main_window()
+  -- get_main_window only filters the tracked tree; make sure we did not land
+  -- on one of the picker's own windows (hidden input, floating preview).
+  if
+    main_win
+    and vim.api.nvim_win_is_valid(main_win)
+    and vim.api.nvim_win_get_config(main_win).relative == ""
+    and not vim.bo[vim.api.nvim_win_get_buf(main_win)].filetype:match("^snacks_picker")
+  then
+    picker.main = main_win
+    return
+  end
+  vim.cmd("rightbelow vsplit")
+  main_win = vim.api.nvim_get_current_win()
+  global_state.main_win = main_win
+  picker.main = main_win
+end
+
 local function setup_preview_hooks()
   if hooks_registered then
     return
@@ -29,6 +60,7 @@ local function setup_preview_hooks()
       local input_win = picker.input and picker.input.win and picker.input.win.win
       local list_win = picker.list and picker.list.win and picker.list.win.win
       if window == input_win or window == list_win then
+        ensure_main_anchor(picker)
         picker:toggle("preview", { enable = true })
         vim.schedule(function()
           if not picker.closed then
@@ -104,7 +136,8 @@ function M.show(commit_hash)
       -- Preview mode belongs to being in the tree: re-enable the patch pane
       -- only when the user is exploring it (":Unified <new-ref>" from the
       -- content window must NOT drop an overlay over their buffer).
-      if live:is_focused() then
+      if live:is_focused() and not live.layout:is_hidden("preview") then
+        ensure_main_anchor(live)
         live:toggle("preview", { enable = true })
         vim.schedule(function()
           if not live.closed then
