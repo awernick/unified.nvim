@@ -286,9 +286,12 @@ function M.show(commit_hash)
       -- back into the picker root is what previously fought snacks' focus
       -- handling; when the user returns to the tree (mouse keyboard or
       -- ":Unified tree"), the preview comes back via the focus hook above.
-      local preview_win = picker and picker.preview and picker.preview.win and picker.preview.win.win
-      if preview_win and vim.api.nvim_win_is_valid(preview_win) and not picker.layout:is_hidden("preview") then
-        picker:toggle("preview", { enable = false })
+      -- Anchor-independent on purpose: the preview float can be temporarily
+      -- window-less mid anchor repair, but its layout slot is what matters.
+      if picker and picker.layout and not picker.layout:is_hidden("preview") then
+        pcall(function()
+          picker:toggle("preview", { enable = false })
+        end)
       end
 
       if config.values.file_tree.close_after_select then
