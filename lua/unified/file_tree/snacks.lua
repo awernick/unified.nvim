@@ -101,14 +101,17 @@ function M.show(commit_hash)
       live:find()
       tree_state.window = live_win
       global_state.file_tree_win = live_win
-      -- Re-show contract: back in the tree means preview mode again.
-      live:toggle("preview", { enable = true })
-      vim.schedule(function()
-        if not live.closed then
-          live:show_preview()
-          live:focus("list")
-        end
-      end)
+      -- Preview mode belongs to being in the tree: re-enable the patch pane
+      -- only when the user is exploring it (":Unified <new-ref>" from the
+      -- content window must NOT drop an overlay over their buffer).
+      if live:is_focused() then
+        live:toggle("preview", { enable = true })
+        vim.schedule(function()
+          if not live.closed then
+            live:show_preview()
+          end
+        end)
+      end
       return true
     end
     live:close()

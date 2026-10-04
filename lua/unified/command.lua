@@ -74,6 +74,18 @@ M.run = function(args, opts)
       vim.api.nvim_set_current_win(state.main_win)
     end
     state.set_commit_base(commit_base)
+    -- The re-show is asynchronous (the picker instance and layout settle over
+    -- a few ticks), so the focus lands after the tree is back. Entering the
+    -- list also flips the preview on via the snacks-side focus hook.
+    vim.defer_fn(function()
+      if state.get_backend() ~= "snacks" or not pcall(require, "snacks") then
+        return
+      end
+      local picker = require("snacks").picker.get({ source = "git_diff" })[1]
+      if picker and not picker.closed then
+        picker:focus("list")
+      end
+    end, 100)
     return
   end
 
