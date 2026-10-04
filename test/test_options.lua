@@ -353,6 +353,57 @@ function M.test_tab_option_opens_view_in_new_tab()
   return true
 end
 
+-- ":Unified tree" re-opens the changed-files tree after it was closed while
+-- the diff stays active: the built-in tree does not end the session via `q`,
+-- and the command re-fires the base-commit update so the tree re-appears.
+-- Uses the built-in backend; the tests environment does not load snacks.nvim.
+function M.test_tree_command_reopens_closed_tree()
+  local repo = utils.create_git_repo()
+  if not repo then
+    return true
+  end
+
+  require("unified.config").setup({ tab = false, file_tree = { backend = "default" } })
+
+  vim.cmd("tabonly")
+  open_modified_file(repo)
+  local buffer = vim.api.nvim_get_current_buf()
+
+  require("unified.command").run("HEAD")
+
+  assert(
+    wait_until(function()
+      return any_tree_window() ~= nil
+    end),
+    "the tree should open on :Unified"
+  )
+
+  -- Close the tree window as `q` does; the session must stay active.
+  local state = require("unified.state")
+  vim.api.nvim_win_close(any_tree_window(), false)
+  vim.wait(50)
+  assert(state.is_active(), "closing the tree must not end the session")
+  assert(any_tree_window() == nil, "test setup: the tree should be gone")
+
+  require("unified.command").run("tree")
+
+  assert(
+    wait_until(function()
+      return any_tree_window() ~= nil
+    end),
+    ":Unified tree should re-open the tree"
+  )
+  assert(
+    wait_until(function()
+      return buffer_has_diff(buffer)
+    end),
+    "the inline diff should remain usable after reopening the tree"
+  )
+
+  utils.cleanup_git_repo(repo)
+  return true
+end
+
 -- :Unified -t opens in a new tab for that invocation even when tab = false.
 function M.test_tab_flag_opens_view_in_new_tab()
   local repo = utils.create_git_repo()

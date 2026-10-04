@@ -7,7 +7,7 @@ M.setup = function()
     nargs = "*",
     complete = function(ArgLead, CmdLine, _)
       if CmdLine:match("^Unified%s+") then
-        local suggestions = { "-s", "-t", "HEAD", "HEAD~1", "main", "reset" }
+        local suggestions = { "-s", "-t", "tree", "HEAD", "HEAD~1", "main", "reset" }
         local filtered_suggestions = {}
         for _, suggestion in ipairs(suggestions) do
           if suggestion:sub(1, #ArgLead) == ArgLead then
@@ -49,6 +49,31 @@ M.run = function(args, opts)
   -- Handle reset command
   if args == "reset" then
     M.reset()
+    return
+  end
+
+  -- ":Unified tree": re-show the changed-files tree for the active view, after
+  -- the tree side was closed (snacks picker closed with <esc>/q, built-in tree
+  -- via `q`). Re-fires the base-commit update that opens the tree, so it works
+  -- for whichever backend the view is using.
+  if vim.trim(args) == "tree" then
+    local state = require("unified.state")
+    local commit_base = state.get_commit_base()
+    if not state.is_active() or commit_base == nil or commit_base == "" then
+      vim.api.nvim_echo(
+        { { 'Unified: no active diff view. Run ":Unified" first.', "WarningMsg" } },
+        false,
+        {}
+      )
+      return
+    end
+    -- The tree belongs next to its content window, which lives in the view's
+    -- tab: focus that window first so the sidebar opens there (a tab switch is
+    -- a no-op when the view occupies the current tab).
+    if state.main_win and vim.api.nvim_win_is_valid(state.main_win) then
+      vim.api.nvim_set_current_win(state.main_win)
+    end
+    state.set_commit_base(commit_base)
     return
   end
 

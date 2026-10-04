@@ -170,6 +170,13 @@ The main command for the plugin. Behavior depends on arguments and state:
     picker opens first). The `tab` configuration option is true by default,
     so this flag mainly matters when that option is set to false.
 
+:Unified tree
+    Re-shows the changed-files tree for the active diff view after it was
+    closed (the tree is not dropped together with the view: the snacks
+    picker may be dismissed with <esc>/`q`, the built-in tree with `q`).
+    Rooted at the currently defined base commit; errors when no view is
+    active.
+
 :Unified reset
     Removes all unified diff highlights and signs from the current buffer
     and closes the unified file tree window if it is open.

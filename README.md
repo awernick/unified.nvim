@@ -139,6 +139,9 @@ The Snacks picker provides:
 - File restoration with `<c-r>`
 - All standard unified.nvim inline diff functionality when files are selected
 
+Selecting a file keeps the tree open (auto_close is disabled for this picker);
+after closing it with `<esc>`/`q`, `:Unified tree` shows it again.
+
 ### File Tree Interaction (Default Backend)
 
 When the default file tree is open, you can use the following keymaps:
@@ -213,6 +216,7 @@ Behavior notes:
   * `:Unified -s <commit_ref>`: Shows the diff against the specified commit reference using the Snacks git_diff picker (requires snacks.nvim).
   * `:Unified -t [<commit_ref>]`: Opens the diff view in a new tab, leaving your current window layout untouched. Works with or without a commit ref (without one, the picker opens first). The `tab` option defaults to `true`, so this flag mainly matters when you set it to `false`.
   * `:Unified reset`: Removes all unified diff highlights and signs from the current buffer and closes the file tree window if it is open.
+  * `:Unified tree`: Re-shows the changed-files tree for the active diff view after it was closed (snacks picker via `<esc>`/`q`, built-in tree via `q`).
 
 ## Development
 

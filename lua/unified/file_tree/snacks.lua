@@ -72,6 +72,11 @@ function M.show(commit_hash)
       },
     },
     -- Custom confirm action to show unified diff when file is selected
+    -- The tree must survive selecting a file: snacks' auto_close would kill
+    -- the picker the moment confirm focuses the main window, and jump.close
+    -- is the default confirm's close path -- so both are disabled here.
+    auto_close = false,
+    jump = { close = false },
     confirm = function(picker, item)
       if not item or not item.file then
         return
