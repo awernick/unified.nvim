@@ -66,21 +66,32 @@ local function ensure_main_anchor(picker)
   return main_win
 end
 
--- When a split is not allowed right now (E242 inside window-close events),
--- point the preview at the editor surface instead of leaving the dead window
--- id cached: any re-show snacks schedules in the close event then stays
--- valid. The deferred anchor repair restores the win-relative anchoring.
-local function detach_preview_anchor(preview)
-  if not (preview and preview.win and preview.win.opts) then
+-- snacks caches the preview float's anchor in preview.win_opts.main.win and
+-- only recomputes it in preview:update(); restore the live-win-relative
+-- anchoring explicitly onto the preview's win opts as well (the rest of the
+-- main variant -- backdrop/zindex -- is already present there).
+local function reanchor_preview(picker, main_win)
+  if not (picker.preview and picker.preview.win and picker.preview.win.opts) then
     return
   end
-  preview.main = nil
-  preview.win_opts = preview.win_opts or {}
-  preview.win_opts.main = { relative = "editor", backdrop = false, zindex = 40 }
-  preview.win.opts.relative = nil
+  picker.preview.main = main_win
+  picker.preview.win_opts.main.win = main_win
+  picker.preview.win.opts.relative = "win"
+  picker.preview.win.opts.win = main_win
   pcall(function()
-    preview.win:update()
+    picker.preview.win:update()
   end)
+end
+
+-- When no split may be created (close events), transiently point the preview's
+-- cached anchor at the tree list window: it is valid, lives in the same tab,
+-- and keeps any scheduled re-show (ours or snacks core's) from failing. The
+-- deferred anchor repair replaces it with a fresh content window.
+local function fallback_anchor(picker)
+  local list_win = picker.list and picker.list.win and picker.list.win.win
+  if list_win and vim.api.nvim_win_is_valid(list_win) then
+    return list_win
+  end
 end
 
 local function setup_preview_hooks()
@@ -113,9 +124,12 @@ local function setup_preview_hooks()
               picker:toggle("preview", { enable = false })
             end)
           end
-          pcall(function()
-            detach_preview_anchor(picker.preview)
-          end)
+          local fallback = fallback_anchor(picker)
+          if fallback then
+            pcall(function()
+              reanchor_preview(picker, fallback)
+            end)
+          end
         end
         vim.schedule(function()
           if picker.closed then
