@@ -121,13 +121,19 @@ local function setup_preview_hooks()
           if picker.closed then
             return
           end
+          -- Respect reading mode: if focus moved to the content window while
+          -- we were deferred (e.g. a confirm that just landed), the patch
+          -- pane must stay closed.
+          if not picker:is_focused() then
+            return
+          end
           local anchor = ensure_main_anchor(picker)
           if not anchor then
             return
           end
           picker:toggle("preview", { enable = true })
           vim.schedule(function()
-            if not picker.closed and picker.preview then
+            if not picker.closed and picker.preview and picker:is_focused() then
               pcall(function()
                 picker:show_preview()
               end)
