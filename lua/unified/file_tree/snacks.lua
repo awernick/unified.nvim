@@ -42,24 +42,28 @@ end
 -- then throws "Invalid window id". Re-point the anchor: reuse the tracked
 -- content window when it is valid, or create a fresh split so the tree keeps
 -- working and the next preview has somewhere to live.
+-- Ensure the preview float has a live anchor (returns the win id or nil).
+-- fires inside close events, so the split recreation never happens in the
+-- event context itself (E242): callers defer the repair when possible.
 local function ensure_main_anchor(picker)
-  -- Picker layout parts can look like valid mains to snacks' own auto-heal
-  -- (file_tree/snacks notes: the layout box window becomes picker.main after
-  -- the content window is closed), so this must test for an anchorable window.
   if valid_anchor(picker.main) then
-    return
+    return picker.main
   end
   if not global_state.is_active() then
-    return
+    return nil
   end
   local main_win = global_state.get_main_window()
   if not valid_anchor(main_win) then
-    vim.cmd("rightbelow vsplit")
+    local ok = pcall(vim.cmd, "rightbelow vsplit")
+    if not ok then
+      return nil
+    end
     main_win = vim.api.nvim_get_current_win()
     global_state.main_win = main_win
   end
   picker.main = main_win
   reanchor_preview(picker, main_win)
+  return main_win
 end
 
 local function setup_preview_hooks()
@@ -80,12 +84,33 @@ local function setup_preview_hooks()
       local input_win = picker.input and picker.input.win and picker.input.win.win
       local list_win = picker.list and picker.list.win and picker.list.win.win
       if window == input_win or window == list_win then
-        ensure_main_anchor(picker)
-        picker:toggle("preview", { enable = true })
+        -- The content window can die while the tree stays up (e.g. :q on the
+        -- file buffer). Any preview re-show would then build its float on a
+        -- dead anchor ("Invalid window id"), and window-close events forbid
+        -- splitting (E242), so: drop the patch pane now (no fanfare) and run
+        -- the anchor repair + re-show from a deferred context where splits
+        -- are legal again.
+        if not valid_anchor(picker.main) and not picker.layout:is_hidden("preview") then
+          pcall(function()
+            picker:toggle("preview", { enable = false })
+          end)
+        end
         vim.schedule(function()
-          if not picker.closed then
-            picker:show_preview()
+          if picker.closed then
+            return
           end
+          local anchor = ensure_main_anchor(picker)
+          if not anchor then
+            return
+          end
+          picker:toggle("preview", { enable = true })
+          vim.schedule(function()
+            if not picker.closed and picker.preview then
+              pcall(function()
+                picker:show_preview()
+              end)
+            end
+          end)
         end)
       end
     end,
