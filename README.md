@@ -90,6 +90,11 @@ require('unified').setup({
     -- When true, :Unified moves the cursor into the tree on open.
     -- When false, focus stays in your buffer. Either way the current buffer's diff is shown.
     focus = false,
+    -- When true (snacks backend), selecting a file closes the tree and leaves
+    -- focus in the file buffer. When false (default), the tree stays open with
+    -- the focus contract: in the tree = floating patch preview; in the content
+    -- window = the buffer with inline diff highlights.
+    close_after_select = false,
   },
 })
 ```
@@ -139,8 +144,10 @@ The Snacks picker provides:
 - File restoration with `<c-r>`
 - All standard unified.nvim inline diff functionality when files are selected
 
-Selecting a file keeps the tree open (auto_close is disabled for this picker);
-after closing it with `<esc>`/`q`, `:Unified tree` shows it again.
+Selecting a file drops the floating patch and leaves you in the buffer with
+the inline diff highlights; the tree stays open (set `file_tree.close_after_select
+= true` for the old auto-close behavior). Focusing the tree again (or `:Unified
+tree` after closing it with `<esc>`/`q`) restores the floating patch preview.
 
 ### File Tree Interaction (Default Backend)
 

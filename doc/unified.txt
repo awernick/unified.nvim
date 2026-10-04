@@ -97,6 +97,11 @@ require('unified').setup({
     -- focus stays in the buffer you are in. The current buffer's diff is shown
     -- either way.
     focus = false,
+    -- When true (snacks backend), selecting a file closes the tree and leaves
+    -- focus in the file buffer. When false (default), the tree stays open with
+    -- the focus contract: in the tree = floating patch preview; in the content
+    -- window = the buffer with inline diff highlights.
+    close_after_select = false,
   },
 })
 <
@@ -175,7 +180,7 @@ The main command for the plugin. Behavior depends on arguments and state:
     closed (the tree is not dropped together with the view: the snacks
     picker may be dismissed with <esc>/`q`, the built-in tree with `q`).
     Rooted at the currently defined base commit; errors when no view is
-    active.
+    active. Focusing the tree restores the floating diff preview.
 
 :Unified reset
     Removes all unified diff highlights and signs from the current buffer

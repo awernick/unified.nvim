@@ -38,6 +38,11 @@ M.defaults = {
     -- When true, :Unified moves the cursor into the tree on open. When false, focus
     -- stays in your buffer. The current buffer's diff is shown either way.
     focus = false,
+    -- When true (snacks backend), selecting a file in the tree closes the tree
+    -- and leaves focus in the file buffer. When false (default), the tree
+    -- stays open with the focus contract: in the tree = floating patch
+    -- preview; in the content window = the buffer with inline diff highlights.
+    close_after_select = false,
   },
 }
 

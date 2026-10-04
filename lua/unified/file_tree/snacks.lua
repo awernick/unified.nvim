@@ -172,12 +172,20 @@ function M.show(commit_hash)
       local auto_refresh = require("unified.auto_refresh")
       auto_refresh.setup(vim.api.nvim_get_current_buf())
 
-      -- Return focus to the picker
-      if picker and picker.layout and picker.layout.win and picker.layout.win.win then
-        if vim.api.nvim_win_is_valid(picker.layout.win.win) then
-          vim.api.nvim_set_current_win(picker.layout.win.win)
-        end
+      -- Reading mode: drop the floating patch so the buffer with the inline
+      -- diff highlights is visible, and keep focus there. Redirecting focus
+      -- back into the picker root is what previously fought snacks' focus
+      -- handling; when the user returns to the tree (mouse keyboard or
+      -- ":Unified tree"), the preview comes back via the focus hook above.
+      local preview_win = picker and picker.preview and picker.preview.win and picker.preview.win.win
+      if preview_win and vim.api.nvim_win_is_valid(preview_win) and not picker.layout:is_hidden("preview") then
+        picker:toggle("preview", { enable = false })
       end
+
+      if config.values.file_tree.close_after_select then
+        picker:close()
+      end
+      vim.api.nvim_set_current_win(main_win)
     end,
   }
 
