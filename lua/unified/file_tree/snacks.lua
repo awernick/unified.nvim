@@ -66,6 +66,23 @@ local function ensure_main_anchor(picker)
   return main_win
 end
 
+-- When a split is not allowed right now (E242 inside window-close events),
+-- point the preview at the editor surface instead of leaving the dead window
+-- id cached: any re-show snacks schedules in the close event then stays
+-- valid. The deferred anchor repair restores the win-relative anchoring.
+local function detach_preview_anchor(preview)
+  if not (preview and preview.win and preview.win.opts) then
+    return
+  end
+  preview.main = nil
+  preview.win_opts = preview.win_opts or {}
+  preview.win_opts.main = { relative = "editor", backdrop = false, zindex = 40 }
+  preview.win.opts.relative = nil
+  pcall(function()
+    preview.win:update()
+  end)
+end
+
 local function setup_preview_hooks()
   if hooks_registered then
     return
@@ -90,9 +107,14 @@ local function setup_preview_hooks()
         -- splitting (E242), so: drop the patch pane now (no fanfare) and run
         -- the anchor repair + re-show from a deferred context where splits
         -- are legal again.
-        if not valid_anchor(picker.main) and not picker.layout:is_hidden("preview") then
+        if not valid_anchor(picker.main) then
+          if not picker.layout:is_hidden("preview") then
+            pcall(function()
+              picker:toggle("preview", { enable = false })
+            end)
+          end
           pcall(function()
-            picker:toggle("preview", { enable = false })
+            detach_preview_anchor(picker.preview)
           end)
         end
         vim.schedule(function()
