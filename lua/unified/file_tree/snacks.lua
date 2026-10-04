@@ -43,8 +43,31 @@ function M.show(commit_hash)
   tree_state.commit_ref = commit_hash
   tree_state.root_path = root_dir
   tree_state.diff_only = true
+  local base = commit_hash or "HEAD"
 
-  -- Close existing window if it exists
+  -- Refresh a live git_diff picker instead of replacing it: Snacks.picker.pick()
+  -- closes an existing same-source instance and returns early (toggle
+  -- semantics), so a blind snacks.picker(opts) call would only kill the open
+  -- tree -- this is what used to wipe the tree when selecting a file or
+  -- re-running :Unified with a new ref. A live instance whose windows are gone
+  -- (e.g. reported after a refresh) is torn down synchronously below so the
+  -- fresh instance created further down does not lose the same race. Fresh
+  -- create covers the closed-tree reopen path.
+  local live = snacks.picker.get({ source = "git_diff", tab = false })[1]
+  if live then
+    local live_win = live and live.layout and live.layout.win and live.layout.win.win
+    if live_win and vim.api.nvim_win_is_valid(live_win) then
+      live.opts.base = base
+      live.opts.cwd = root_dir
+      live:find()
+      tree_state.window = live_win
+      global_state.file_tree_win = live_win
+      return true
+    end
+    live:close()
+  end
+
+  -- Close a stale tracked window if it is still around
   if tree_state.window and vim.api.nvim_win_is_valid(tree_state.window) then
     vim.api.nvim_win_close(tree_state.window, true)
   end
