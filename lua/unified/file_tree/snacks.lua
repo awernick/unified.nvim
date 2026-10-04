@@ -3,6 +3,43 @@ local global_state = require("unified.state")
 local tree_state = require("unified.file_tree.state")
 local git = require("unified.git")
 
+-- Focus contract for the snacks-backed tree: whenever one of the tree picker's
+-- own windows (input/list) gains focus, the floating diff preview must be on
+-- screen. Snacks can have hidden it during a confirm jump (auto_close = false
+-- keeps the picker alive while the preview pane drops out), and refocusing
+-- without this hook would leave the user looking at the raw buffer instead of
+-- the patch. Registered once; cheap because a git_diff picker is rare.
+local hooks_registered = false
+
+local function setup_preview_hooks()
+  if hooks_registered then
+    return
+  end
+  hooks_registered = true
+
+  vim.api.nvim_create_autocmd({ "WinEnter", "BufWinEnter" }, {
+    group = vim.api.nvim_create_augroup("unified_tree_snacks_preview", { clear = true }),
+    callback = function()
+      local pickers = Snacks.picker.get({ source = "git_diff", tab = false })
+      local picker = pickers[1]
+      if not picker then
+        return
+      end
+      local window = vim.api.nvim_get_current_win()
+      local input_win = picker.input and picker.input.win and picker.input.win.win
+      local list_win = picker.list and picker.list.win and picker.list.win.win
+      if window == input_win or window == list_win then
+        picker:toggle("preview", { enable = true })
+        vim.schedule(function()
+          if not picker.closed then
+            picker:show_preview()
+          end
+        end)
+      end
+    end,
+  })
+end
+
 --- Shows the file tree using Snacks git_diff picker
 --- @param commit_hash string|nil The commit hash to compare against
 function M.show(commit_hash)
@@ -14,6 +51,8 @@ function M.show(commit_hash)
     )
     return false
   end
+
+  setup_preview_hooks()
 
   local file_path = vim.fn.getcwd()
   local root_dir = file_path
@@ -62,6 +101,14 @@ function M.show(commit_hash)
       live:find()
       tree_state.window = live_win
       global_state.file_tree_win = live_win
+      -- Re-show contract: back in the tree means preview mode again.
+      live:toggle("preview", { enable = true })
+      vim.schedule(function()
+        if not live.closed then
+          live:show_preview()
+          live:focus("list")
+        end
+      end)
       return true
     end
     live:close()
