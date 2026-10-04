@@ -11,6 +11,18 @@ local git = require("unified.git")
 -- the patch. Registered once; cheap because a git_diff picker is rare.
 local hooks_registered = false
 
+-- snacks caches the preview float's anchor in preview.win_opts.main.win and
+-- only recomputes it in preview:update(); force that after moving the anchor.
+local function reanchor_preview(picker, main_win)
+  if picker.preview and picker.preview.win and picker.preview.win.opts then
+    picker.preview.win_opts.main.win = main_win
+    picker.preview.main = main_win
+    pcall(function()
+      picker.preview.win:update()
+    end)
+  end
+end
+
 -- The preview float anchors on the content window (snacks uses relative =
 -- "win" with win = picker.main). Closing the file-buffer window (e.g. :q)
 -- with the tree still open leaves that anchor dead, and every preview re-show
@@ -34,12 +46,14 @@ local function ensure_main_anchor(picker)
     and not vim.bo[vim.api.nvim_win_get_buf(main_win)].filetype:match("^snacks_picker")
   then
     picker.main = main_win
+    reanchor_preview(picker, main_win)
     return
   end
   vim.cmd("rightbelow vsplit")
   main_win = vim.api.nvim_get_current_win()
   global_state.main_win = main_win
   picker.main = main_win
+  reanchor_preview(picker, main_win)
 end
 
 local function setup_preview_hooks()
