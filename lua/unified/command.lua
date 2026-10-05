@@ -75,17 +75,30 @@ M.run = function(args, opts)
     end
     state.set_commit_base(commit_base)
     -- The re-show is asynchronous (the picker instance and layout settle over
-    -- a few ticks), so the focus lands after the tree is back. Entering the
-    -- list also flips the preview on via the snacks-side focus hook.
-    vim.defer_fn(function()
+    -- a few ticks), so the focus lands after the tree is back. Retrying beats
+    -- a single timed shot: until the (possibly rebuilt) instance answers
+    -- is_focused() with the list, keep trying. Entering the list also flips
+    -- the preview on via the snacks-side focus hook.
+    local function refocus_tree()
       if state.get_backend() ~= "snacks" or not pcall(require, "snacks") then
         return
       end
       local picker = require("snacks").picker.get({ source = "git_diff" })[1]
-      if picker and not picker.closed then
-        picker:focus("list")
+      if not picker or picker.closed then
+        return
       end
-    end, 100)
+      if not pcall(function()
+        picker:focus("list")
+      end) then
+        return
+      end
+      vim.defer_fn(function()
+        if not picker.closed and not picker:is_focused() then
+          refocus_tree()
+        end
+      end, 150)
+    end
+    vim.defer_fn(refocus_tree, 50)
     return
   end
 

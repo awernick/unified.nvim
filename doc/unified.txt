@@ -98,10 +98,10 @@ require('unified').setup({
     -- either way.
     focus = false,
     -- When true (snacks backend), selecting a file closes the tree and leaves
-    -- focus in the file buffer. When false (default), the tree stays open with
+    -- focus in the file buffer (default). When false, the tree stays open with
     -- the focus contract: in the tree = floating patch preview; in the content
     -- window = the buffer with inline diff highlights.
-    close_after_select = false,
+    close_after_select = true,
   },
 })
 <
