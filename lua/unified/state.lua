@@ -9,6 +9,11 @@ local m = {
 -- Main window reference
 M.main_win = nil
 
+-- Tab page hosting the diff view (content window and tree). Lets the session
+-- teardown tell "the user closed the whole view tab" apart from "a single
+-- window of the view went away" (which the tree/preview repairs resurrect).
+M.view_tab = nil
+
 -- File tree window and buffer references
 M.file_tree_win = nil
 M.file_tree_buf = nil

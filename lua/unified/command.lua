@@ -20,19 +20,23 @@ M.setup = function()
     end,
   })
 
-  -- Closing the tab that hosts the diff view ends the session. The inline diff
-  -- decorations live on the buffer, and the tab-open layout branches that same
-  -- buffer (`tab split`), so without this hook the decorations would keep
-  -- showing in the original tab until an explicit :Unified reset. Both the
-  -- content window and the file tree live in the view's tab: when a tab close
-  -- leaves them both invalid, the user just closed the view and we clean up.
+  -- Closing the view's tab ends the session. The inline diff decorations live
+  -- on the buffer, and the tab-open layout branches that same buffer (`tab
+  -- split`), so without this hook the decorations would keep showing in the
+  -- original tab until an explicit :Unified reset. Deciding by tracked tab
+  -- validity (not "main and tree windows are dead") matters since the tree
+  -- auto-closes on select by default: with reading mode as the resting state,
+  -- closing the content window is an everyday move the :Unified tree round
+  -- trip must survive whenever the view tab itself still exists, and closing
+  -- a lone content window away from the tree must end the session cleanly.
   vim.api.nvim_create_autocmd("TabClosed", {
     callback = function()
       vim.schedule(function()
         local state = require("unified.state")
-        local main_dead = not (state.main_win and vim.api.nvim_win_is_valid(state.main_win))
-        local tree_dead = not (state.file_tree_win and vim.api.nvim_win_is_valid(state.file_tree_win))
-        if state.is_active() and main_dead and tree_dead then
+        if
+          state.is_active()
+          and (not state.view_tab or not vim.api.nvim_tabpage_is_valid(state.view_tab))
+        then
           M.reset()
         end
       end)
@@ -257,6 +261,11 @@ M.run = function(args, opts)
         state.main_win = nil
       end
 
+      -- Track the tab page hosting the view for the TabClosed teardown hook.
+      state.view_tab = (state.main_win and vim.api.nvim_win_is_valid(state.main_win))
+        and vim.api.nvim_win_get_tabpage(state.main_win)
+        or vim.api.nvim_get_current_tabpage()
+
       -- This triggers the autocmd which calls file_tree.show (repo-wide, cwd-rooted).
       state.set_commit_base(commit_ref)
     end)
@@ -302,6 +311,7 @@ function M.reset()
   state.file_tree_buf = nil
 
   state.main_win = nil
+  state.view_tab = nil
   state.set_active(false)
   state.set_backend(require("unified.config").values.file_tree.backend)
 end
