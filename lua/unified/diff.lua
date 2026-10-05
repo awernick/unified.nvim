@@ -2,6 +2,7 @@ local M = {}
 
 local config = require("unified.config")
 local hunk_store = require("unified.hunk_store")
+local hunk_view = require("unified.hunk_view")
 
 -- Parse diff and return a structured representation
 function M.parse_diff(diff_text)
@@ -46,6 +47,16 @@ end
 
 function M.display_deleted_file(buffer, blob_text)
   local ns_id = config.ns_id
+  local blob_lines = vim.split(blob_text, "\n", { plain = true })
+  if blob_lines[#blob_lines] == "" then
+    table.remove(blob_lines)
+  end
+  local synth = { old_start = 1, old_count = #blob_lines, new_start = 1, new_count = 0, lines = {} }
+  for _, blob_line in ipairs(blob_lines) do
+    table.insert(synth.lines, "-" .. blob_line)
+  end
+  hunk_view.set(buffer, { synth })
+  local ns_id = config.ns_id
   vim.api.nvim_buf_clear_namespace(buffer, ns_id, 0, -1)
   vim.fn.sign_unplace("unified_diff", { buffer = buffer })
 
@@ -76,6 +87,7 @@ function M.display_deleted_file(buffer, blob_text)
 end
 
 function M.display_inline_diff(buffer, hunks)
+  hunk_view.set(buffer, vim.deepcopy(hunks))
   local ns_id = config.ns_id
 
   vim.api.nvim_buf_clear_namespace(buffer, ns_id, 0, -1)
@@ -294,6 +306,7 @@ function M.display_inline_diff(buffer, hunks)
     hunk_store.set(buffer, unique_lines)
   else
     hunk_store.clear(buffer)
+    hunk_view.clear(buffer)
   end
   return mark_count > 0
 end

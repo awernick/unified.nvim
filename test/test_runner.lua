@@ -15,6 +15,7 @@ local test_commit_picker = require("test.test_commit_picker")
 local test_command = require("test.test_command")
 local test_commit_tree = require("test.test_filetree.test_commit_tree")
 local test_virt_scroll = require("test.test_virt_scroll")
+local test_hunk_view = require("test.test_hunk_view")
 -- Helper to run a group of tests
 local function run_test_group(group, group_name)
   local function is_test_function(name)
@@ -83,6 +84,7 @@ function M.run_all_tests()
     { name = "test_command", module = test_command },
     { name = "test_commit_tree", module = test_commit_tree },
     { name = "test_virt_scroll", module = test_virt_scroll },
+    { name = "test_hunk_view", module = test_hunk_view },
   }
 
   local all_results = {}
@@ -186,6 +188,8 @@ function M.run_test(test_name)
     test_commit_picker = test_commit_picker,
     test_command = test_command,
     test_commit_tree = test_commit_tree,
+    test_virt_scroll = test_virt_scroll,
+    test_hunk_view = test_hunk_view,
   }
 
   local group = groups[group_name]
