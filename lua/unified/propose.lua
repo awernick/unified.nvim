@@ -32,17 +32,17 @@ function M.show_diff_text(text, title)
     error("unified.propose: text must be a non-empty string")
   end
 
-  -- New scratch buffer replaces the previous one; the old buffer is only
+  -- New scratch buffer replaces the previous one; any old buffer is only
   -- deleted after the reused window has been switched away from it, since
   -- force-deleting a displayed buffer closes its windows.
-  local old_buf = buf
-  buf = vim.api.nvim_create_buf(false, true)
-  vim.b[buf].unified_propose = true
-
   local ok, name = pcall(function()
     return "unified://propose/" .. (title or "diff"):gsub("[^%w%-%_%.]", "_")
   end)
-  vim.api.nvim_buf_set_name(buf, ok and name or "unified://propose/diff")
+  name = ok and name or "unified://propose/diff"
+
+  local old_buf = buf
+  buf = vim.api.nvim_create_buf(false, true)
+  vim.b[buf].unified_propose = true
 
   vim.bo[buf].buftype = "nofile"
   vim.bo[buf].swapfile = false
@@ -75,6 +75,14 @@ function M.show_diff_text(text, title)
   end
   vim.wo[win].wrap = false
   vim.wo[win].number = true
+
+  -- Free the name before taking it: leftover buffers with the same title
+  -- (e.g. abandoned runs) would trip E95 in nvim_buf_set_name.
+  local stale = vim.fn.bufnr(name)
+  if stale ~= -1 and stale ~= buf then
+    pcall(vim.api.nvim_buf_delete, stale, { force = true })
+  end
+  vim.api.nvim_buf_set_name(buf, name)
 
   if old_buf and vim.api.nvim_buf_is_valid(old_buf) then
     pcall(vim.api.nvim_buf_delete, old_buf, { force = true })
